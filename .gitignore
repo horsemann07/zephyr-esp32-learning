@@ -1,3 +1,11 @@
+.west/
+.venv/
+build/
+build-*/
+__pycache__/
+*.pyc
+
+
 # Prerequisites
 *.d
 
