@@ -1,0 +1,120 @@
+
+/*
+ * ============================================================================
+ * File        : app.overlay
+ * Description : Custom LED GPIO configuration for Zephyr RTOS
+ * ============================================================================
+ *
+ * DeviceTree describes the hardware connected to the microcontroller.
+ *
+ * It tells Zephyr:
+ *   - Which hardware device is being used.
+ *   - Which GPIO controller owns the pin.
+ *   - Which physical GPIO number is connected.
+ *   - Whether the signal is active HIGH or active LOW.
+ *
+ * DeviceTree is processed during the build, not executed at runtime.
+ * ============================================================================
+ */
+
+/*
+ * Include GPIO flag definitions such as GPIO_ACTIVE_HIGH.
+ * Your board's existing DeviceTree may already include this header,
+ * but explicitly including it makes the overlay self-contained.
+ */
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/*
+ * "/" represents the root node of the DeviceTree.
+ *
+ * Every hardware node belongs somewhere under this root.
+ *
+ * We are adding an LED description under the root.
+ */
+/ {
+
+    /*
+     * "leds" is a child node of the root.
+     *
+     * It groups GPIO-controlled LEDs together.
+     *
+     * This is a DeviceTree node, not a C variable or function.
+     */
+    leds {
+
+        /*
+         * "compatible" describes the type of hardware.
+         *
+         * "gpio-leds" is a standard Zephyr DeviceTree binding.
+         *
+         * This tells Zephyr that the child nodes describe
+         * LEDs controlled through GPIO pins.
+         */
+        compatible = "gpio-leds";
+
+        /*
+         * user_led:
+         *
+         * This is the DeviceTree NODE LABEL.
+         *
+         * C code can reference it with:
+         *
+         *     DT_NODELABEL(user_led)
+         *
+         * led_0:
+         *
+         * This is the DeviceTree NODE NAME.
+         *
+         * The node name identifies this child inside the
+         * DeviceTree hierarchy.
+         *
+         * The label and name are different concepts.
+         */
+        user_led: led_0 {
+
+            /*
+             * "gpios" describes the electrical connection.
+             *
+             * Format:
+             *
+             *     gpios = <&controller pin flags>;
+             *
+             * &gpio0:
+             *     Reference to the GPIO controller node
+             *     labelled gpio0 in the board/SoC DeviceTree.
+             *
+             * 25:
+             *     GPIO pin number 25 on that controller.
+             *
+             * GPIO_ACTIVE_HIGH:
+             *     Logical ACTIVE corresponds to electrical HIGH.
+             *
+             *     gpio_pin_set_dt(&led, 1) -> active / HIGH
+             *     gpio_pin_set_dt(&led, 0) -> inactive / LOW
+             *
+             * IMPORTANT:
+             *     GPIO 25 is an example. Confirm the actual
+             *     available GPIO and wiring on your board.
+             */
+            gpios = <&gpio0 25 GPIO_ACTIVE_HIGH>;
+
+            /*
+             * Optional descriptive label.
+             *
+             * Useful for documentation.
+             * It is not a DeviceTree alias.
+             */
+            label = "User LED";
+        };
+    };
+
+    /*
+     * We intentionally do not define:
+     *
+     * aliases {
+     *     led0 = &user_led;
+     * };
+     *
+     * The C application will use the node label directly.
+     */
+};
