@@ -1,0 +1,21 @@
+/* ============================================================================
+ * File        : app.overlay
+ * Description : I2C configuration and deferred SSD1306 initialization
+ * ========================================================================== */
+
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+&i2c0 {
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&ssd1306_ssd1306_128x64 {
+    status = "okay";
+
+    /*
+     * Delay SSD1306 initialization until the application
+     * has recovered the I2C bus.
+     */
+    zephyr,deferred-init;
+};

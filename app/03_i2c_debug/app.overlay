@@ -1,0 +1,22 @@
+/* ============================================================================
+ * File        : app.overlay
+ * Description : Heltec OLED deferred initialization
+ * Board       : Heltec WiFi LoRa 32 V2
+ * ========================================================================== */
+
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+/* Use standard I2C speed for initial testing. */
+&i2c0 {
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+/*
+ * Prevent the SSD1306 driver from initializing automatically.
+ *
+ * The application will recover I2C first, then initialize
+ * the display driver explicitly.
+ */
+&ssd1306_ssd1306_128x64 {
+    zephyr,deferred-init;
+};
