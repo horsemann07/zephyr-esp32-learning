@@ -8,15 +8,6 @@
 
 /* Use standard I2C speed for initial testing. */
 &i2c0 {
+    /* Test the OLED at standard-mode I2C speed: 100 kHz. */
     clock-frequency = <I2C_BITRATE_STANDARD>;
-};
-
-/*
- * Prevent the SSD1306 driver from initializing automatically.
- *
- * The application will recover I2C first, then initialize
- * the display driver explicitly.
- */
-&ssd1306_ssd1306_128x64 {
-    zephyr,deferred-init;
 };

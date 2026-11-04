@@ -1,0 +1,41 @@
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/adc/adc.h>
+
+/ {
+    zephyr,user {
+        /* ESP32 ADC1 hardware: GPIO36=channel 0, GPIO39=channel 3. */
+        io-channels = <&adc0 0>, <&adc0 3>;
+    };
+};
+
+/* Proven SSD1306 startup workaround from Example 05/06. */
+&i2c0 {
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+&ssd1306_ssd1306_128x64 {
+    status = "okay";
+    zephyr,deferred-init;
+};
+
+/* Zephyr adc0 maps to physical ESP32 ADC1. */
+&adc0 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    channel@0 {
+        reg = <0>;
+        zephyr,gain = "ADC_GAIN_1_4";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,resolution = <12>;
+    };
+    channel@3 {
+        reg = <3>;
+        zephyr,gain = "ADC_GAIN_1_4";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,resolution = <12>;
+    };
+};

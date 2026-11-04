@@ -1,0 +1,46 @@
+/* ============================================================================
+ * File        : app.overlay
+ * Description : OLED I2C configuration and deferred initialization
+ * Board       : Heltec WiFi LoRa 32 V2
+ * ========================================================================== */
+
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+/* -------------------------------------------------------------------------- */
+/* I2C Controller Configuration                                               */
+/* -------------------------------------------------------------------------- */
+
+&i2c0 {
+    status = "okay";
+
+    /*
+     * Use standard I2C speed (100 kHz).
+     *
+     * This keeps the initial multithreading experiment
+     * consistent with the working OLED example.
+     */
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+/* -------------------------------------------------------------------------- */
+/* SSD1306 OLED Configuration                                                 */
+/* -------------------------------------------------------------------------- */
+
+&ssd1306_ssd1306_128x64 {
+    status = "okay";
+
+    /*
+     * Prevent automatic SSD1306 initialization during boot.
+     *
+     * main() will:
+     *
+     * 1. Call i2c_recover_bus().
+     * 2. Call device_init(oled_dev).
+     * 3. Initialize the character framebuffer.
+     * 4. Start all three application threads.
+     *
+     * This avoids the I2C -EBUSY failure encountered
+     * during automatic OLED initialization.
+     */
+    zephyr,deferred-init;
+};
