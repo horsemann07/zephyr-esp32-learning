@@ -1,0 +1,22 @@
+mainmenu "RideCast Heltec Navigation Demo"
+
+config RC_HELTEC_WIFI_DEMO
+    bool "Enable Wi-Fi STA and development TCP navigation receiver"
+    depends on WIFI && NETWORKING && NET_SOCKETS
+    default n
+    help
+      Enable Zephyr Wi-Fi connection manager plus a TCP server on port 5050.
+      Wire protocol for this demonstration is temporary ASCII test-only lines.
+      Do not expose this unauthenticated test server to untrusted networks.
+
+if RC_HELTEC_WIFI_DEMO
+config RC_DEMO_WIFI_SSID
+    string "Development Wi-Fi SSID"
+    default ""
+
+config RC_DEMO_WIFI_PSK
+    string "Development Wi-Fi WPA2 passphrase"
+    default ""
+endif
+
+source "Kconfig.zephyr"

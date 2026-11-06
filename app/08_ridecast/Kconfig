@@ -1,0 +1,21 @@
+mainmenu "RideCast 08: Dual Radio Connection Demo"
+
+config RC_ENABLE_WIFI
+    bool "Enable Wi-Fi STA and TCP enrollment"
+    depends on WIFI && NETWORKING && NET_SOCKETS
+    default y
+
+config RC_ENABLE_BLE
+    bool "Enable BLE authenticated pairing and GATT"
+    depends on BT && BT_PERIPHERAL && BT_SMP
+    default y
+
+config RC_WIFI_SSID
+    string "Development WPA2 Wi-Fi network SSID"
+    default ""
+
+config RC_WIFI_PSK
+    string "Development WPA2 Wi-Fi passphrase"
+    default ""
+
+source "Kconfig.zephyr"

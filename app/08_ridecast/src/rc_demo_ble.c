@@ -1,0 +1,201 @@
+/* Native Bluetooth LE Secure Connections passkey + persistent bonds.
+ * Uses the phone OS Bluetooth pairing dialog (NOT a plaintext GATT PIN).
+ */
+#include "rc_demo_ble.h"
+#include "rc_demo_manager.h"
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/hci.h>
+#include <zephyr/settings/settings.h>
+#include <zephyr/sys/printk.h>
+#include <string.h>
+#include <errno.h>
+
+#define RC_UUID_SERVICE_VAL \
+    BT_UUID_128_ENCODE(0x4ef13480, 0x7330, 0x49ce, 0x9f17, 0x524343303830)
+#define RC_UUID_COMMAND_VAL \
+    BT_UUID_128_ENCODE(0x4ef13481, 0x7330, 0x49ce, 0x9f17, 0x524343303830)
+
+static struct bt_uuid_128 rc_uuid_service = BT_UUID_INIT_128(RC_UUID_SERVICE_VAL);
+static struct bt_uuid_128 rc_uuid_command = BT_UUID_INIT_128(RC_UUID_COMMAND_VAL);
+static struct bt_conn* current;
+static char ble_reply[12] = "RC READY";
+
+static ssize_t
+read_reply(struct bt_conn* conn, const struct bt_gatt_attr* attr, void* buf, uint16_t len, uint16_t offset)
+{
+    ARG_UNUSED(attr);
+    if(rc_demo_manager_get().active != RC_DEMO_LINK_BLE ||
+       bt_conn_get_security(conn) < BT_SECURITY_L4)
+    {
+        return BT_GATT_ERR(BT_ATT_ERR_AUTHORIZATION);
+    }
+    return bt_gatt_attr_read(conn, attr, buf, len, offset, ble_reply, strlen(ble_reply));
+}
+
+static ssize_t write_cmd(struct bt_conn* conn,
+                         const struct bt_gatt_attr* attr,
+                         const void* buf,
+                         uint16_t len,
+                         uint16_t offset,
+                         uint8_t flags)
+{
+    ARG_UNUSED(attr);
+    ARG_UNUSED(flags);
+    if(rc_demo_manager_get().active != RC_DEMO_LINK_BLE ||
+       bt_conn_get_security(conn) < BT_SECURITY_L4)
+    {
+        return BT_GATT_ERR(BT_ATT_ERR_AUTHORIZATION);
+    }
+    if(offset != 0U || len != 4U || memcmp(buf, "PING", 4) != 0)
+    {
+        return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+    }
+    memcpy(ble_reply, "PONG", 5);
+    printk("[RC BLE] PING -> PONG\n");
+    return len;
+}
+
+BT_GATT_SERVICE_DEFINE(rc_ble_service,
+                       BT_GATT_PRIMARY_SERVICE(&rc_uuid_service.uuid),
+                       BT_GATT_CHARACTERISTIC(&rc_uuid_command.uuid,
+                                              BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+                                              BT_GATT_PERM_READ_AUTHEN | BT_GATT_PERM_WRITE_AUTHEN,
+                                              read_reply,
+                                              write_cmd,
+                                              NULL), );
+
+static const struct bt_data ad[] = {
+    BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+    BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1U),
+};
+
+static void restart_adv(void)
+{
+    int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), NULL, 0);
+    if(err != 0 && err != -EALREADY)
+    {
+        printk("[RC BLE] advertise failed %d\n", err);
+        rc_demo_manager_ble_radio(false);
+    }
+    else
+    {
+        rc_demo_manager_ble_radio(true);
+    }
+}
+
+static void connected(struct bt_conn* conn, uint8_t err)
+{
+    if(err != 0)
+    {
+        printk("[RC BLE] conn error %u\n", err);
+        return;
+    }
+    if(rc_demo_manager_ble_peer() != RC_OK)
+    {
+        (void)bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return;
+    }
+    current = bt_conn_ref(conn);
+    /* New phone: triggers native six-digit pairing prompt.
+     * Returning bond: reuses stored keys, no new passkey.
+     */
+    int ret = bt_conn_set_security(conn, BT_SECURITY_L4);
+    if(ret != 0)
+    {
+        printk("[RC BLE] secure pairing start failed %d\n", ret);
+        (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+    }
+}
+
+static void security_changed(struct bt_conn* conn, bt_security_t level, enum bt_security_err err)
+{
+    if(err != BT_SECURITY_ERR_SUCCESS || level < BT_SECURITY_L4 ||
+       rc_demo_manager_ble_authenticated() != RC_OK)
+    {
+        rc_demo_manager_failure(RC_ERR_AUTH_FAILED);
+        printk("[RC BLE] authentication rejected (%d, level %d)\n", (int)err, (int)level);
+        (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+        return;
+    }
+    printk("[RC BLE] bond authenticated; connection OK\n");
+}
+
+static void disconnected(struct bt_conn* conn, uint8_t reason)
+{
+    printk("[RC BLE] disconnected, reason=%u\n", reason);
+    if(current != NULL && current == conn)
+    {
+        bt_conn_unref(current);
+        current = NULL;
+    }
+    rc_demo_manager_ble_lost();
+}
+
+BT_CONN_CB_DEFINE(ridecast_bt_conn_cb) = {
+    .connected        = connected,
+    .disconnected     = disconnected,
+    .security_changed = security_changed,
+    .recycled         = restart_adv,
+};
+
+static void passkey_display(struct bt_conn* conn, unsigned int passkey)
+{
+    ARG_UNUSED(conn);
+    /* Passkey is generated by the Bluetooth security stack, not by RideCast. */
+    rc_demo_manager_ble_passkey(passkey);
+    printk("[RC BLE] passkey displayed on OLED\n");
+}
+
+static void pairing_cancel(struct bt_conn* conn)
+{
+    printk("[RC BLE] pairing cancelled\n");
+    (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+}
+
+static void paired(struct bt_conn* conn, bool bonded)
+{
+    ARG_UNUSED(conn);
+    printk("[RC BLE] pairing complete; bonded=%d\n", bonded ? 1 : 0);
+    if(!bonded && current != NULL)
+    {
+        (void)bt_conn_disconnect(current, BT_HCI_ERR_AUTH_FAIL);
+    }
+}
+
+static void pairing_failed(struct bt_conn* conn, enum bt_security_err reason)
+{
+    printk("[RC BLE] pairing failed=%d\n", (int)reason);
+    rc_demo_manager_failure(RC_ERR_AUTH_FAILED);
+    (void)bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+}
+
+static const struct bt_conn_auth_cb auth_cb = {
+    .passkey_display = passkey_display,
+    .cancel          = pairing_cancel,
+};
+static struct bt_conn_auth_info_cb auth_info_cb = {
+    .pairing_complete = paired,
+    .pairing_failed   = pairing_failed,
+};
+
+rc_err_sts_t rc_demo_ble_start(void)
+{
+    int err = bt_enable(NULL);
+    if(err != 0)
+        return RC_ERR_RADIO;
+    /* Bluetooth settings must be loaded AFTER bt_enable(). */
+    err = settings_load_subtree("bt");
+    if(err != 0)
+        return RC_ERR_STORAGE;
+    err = bt_conn_auth_cb_register(&auth_cb);
+    if(err != 0)
+        return RC_ERR_INTERNAL;
+    err = bt_conn_auth_info_cb_register(&auth_info_cb);
+    if(err != 0)
+        return RC_ERR_INTERNAL;
+    restart_adv();
+    printk("[RC BLE] Advertising RideCast-08\n");
+    return RC_OK;
+}

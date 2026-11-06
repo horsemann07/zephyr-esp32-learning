@@ -1,0 +1,4 @@
+# Copy to local.conf and configure locally. NEVER COMMIT local.conf.
+# WPA2-PSK 2.4 GHz test access point. No quote escaping examples here.
+CONFIG_RC_DEMO_WIFI_SSID="MyTestWifi"
+CONFIG_RC_DEMO_WIFI_PSK="ChangeMe1234"

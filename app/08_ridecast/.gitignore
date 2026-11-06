@@ -1,0 +1,5 @@
+local.conf
+build*/
+__pycache__/
+*.pyc
+ridecast_wifi_token.txt

@@ -1,0 +1,14 @@
+/* Heltec V2: same OLED configuration as the previously tested local samples.
+ * Defer display startup until after the I2C bus recovery in heltec_graphic.c.
+ */
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+&i2c0 {
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&ssd1306_ssd1306_128x64 {
+    status = "okay";
+    zephyr,deferred-init;
+};
