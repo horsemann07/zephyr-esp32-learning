@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include "rc_err_sts.h"
 #include "rc_demo_manager.h"
+#include "rc_demo_content.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,8 +26,8 @@ typedef enum {
 typedef enum {
     HELTEC_LINK_DEMO = 0, /* No radio connection: locally generated samples */
     HELTEC_LINK_OFFLINE,  /* Wi-Fi unavailable */
-    HELTEC_LINK_WIFI,     /* Associated to AP, no TCP peer */
-    HELTEC_LINK_ONLINE    /* Wi-Fi associated and demo TCP peer connected */
+    HELTEC_LINK_WIFI,     /* AP enabled, no TCP peer */
+    HELTEC_LINK_ONLINE    /* AP + authorized TCP navigation session */
 } heltec_link_t;
 
 typedef struct {
@@ -42,12 +43,13 @@ rc_err_sts_t heltec_graphic_init(void);
 
 /* Only the application/UI thread may call this function.
  * Uses a full back-buffer and one finalize() per frame.
- * v0.5: uncluttered footer: speed | GPS: OK/NO, no separator lines.
+ * v0.6: auto-fit, centered labels, compact footer: speed | GPS: OK/NO.
  */
 rc_err_sts_t heltec_graphic_render(const heltec_nav_screen_t *screen);
 
 /* 128x64 concise enrollment and connection result screen.
  * Must be rendered from the single application UI thread only. */
+rc_err_sts_t heltec_graphic_render_content(const rc_demo_content_t *content);
 rc_err_sts_t heltec_graphic_render_connection(const rc_demo_snapshot_t *state);
 
 #ifdef __cplusplus

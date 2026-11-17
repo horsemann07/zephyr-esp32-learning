@@ -59,6 +59,69 @@ int main(void) {
     assert(rc_demo_manager_wifi_peer()==RC_OK);
     fake_uptime=61000;
     assert(rc_demo_manager_wifi_pin("223456",token)==RC_ERR_TIMEOUT);
-    puts("PASS: connection state and enrollment tests");
+    /* Expired pending Wi-Fi owner must be released without further packets. */
+    assert(rc_demo_manager_ble_peer() == RC_OK);
+    assert(rc_demo_manager_get().stage == RC_DEMO_BLE_PAIR);
+    rc_demo_manager_ble_lost();
+
+    /* A silent, unauthenticated client expires automatically. */
+    fake_uptime = 0;
+    have = false;
+    rc_demo_manager_init(false);
+    assert(rc_demo_manager_wifi_peer() == RC_OK);
+    fake_uptime = 60000;
+    assert(rc_demo_manager_get().stage == RC_DEMO_FAILED);
+    assert(rc_demo_manager_get().error == RC_ERR_TIMEOUT);
+    rc_demo_manager_wifi_lost();
+    fake_uptime = 63001;
+    assert(rc_demo_manager_get().stage == RC_DEMO_WAIT);
+    assert(rc_demo_manager_ble_peer() == RC_OK);
+    rc_demo_manager_ble_lost();
+
+    /* Three wrong codes end enrollment and release the owner. */
+    fake_uptime = 0;
+    rc_demo_manager_init(false);
+    assert(rc_demo_manager_wifi_peer() == RC_OK);
+    assert(rc_demo_manager_wifi_pin("000000", token) == RC_ERR_AUTH_FAILED);
+    assert(rc_demo_manager_wifi_pin("000000", token) == RC_ERR_AUTH_FAILED);
+    assert(rc_demo_manager_wifi_pin("000000", token) == RC_ERR_AUTH_FAILED);
+    assert(rc_demo_manager_get().stage == RC_DEMO_FAILED);
+    assert(rc_demo_manager_ble_peer() == RC_OK);
+    rc_demo_manager_ble_lost();
+
+    /* Authenticated sessions live indefinitely until explicit disconnect. */
+    fake_uptime = 0;
+    rc_demo_manager_init(false);
+    assert(rc_demo_manager_wifi_peer() == RC_OK);
+    assert(rc_demo_manager_wifi_pin("223456", token) == RC_OK);
+    fake_uptime = 100000000;
+    assert(rc_demo_manager_get().stage == RC_DEMO_ACTIVE);
+    assert(rc_demo_manager_get().active == RC_DEMO_LINK_WIFI);
+    assert(rc_demo_manager_ble_peer() == RC_ERR_BUSY);
+    /* A delayed BLE callback must not mark the Wi-Fi session failed. */
+    assert(!rc_demo_manager_link_failure(RC_DEMO_LINK_BLE, RC_ERR_AUTH_FAILED));
+    assert(rc_demo_manager_get().active == RC_DEMO_LINK_WIFI);
+    rc_demo_manager_radio_failure(RC_DEMO_LINK_BLE, RC_ERR_RADIO);
+    assert(rc_demo_manager_get().active == RC_DEMO_LINK_WIFI);
+    assert(rc_demo_manager_get().ble_radio_error == RC_ERR_RADIO);
+    rc_demo_manager_wifi_station_count(1);
+    rc_demo_manager_wifi_tcp(true);
+    assert(rc_demo_manager_get().wifi_stations == 1);
+    assert(rc_demo_manager_get().wifi_tcp_connected);
+    rc_demo_manager_wifi_lost();
+    assert(rc_demo_manager_get().stage == RC_DEMO_WAIT);
+    assert(!rc_demo_manager_get().wifi_tcp_connected);
+    /* With no TCP owner the user may reconnect, even if AP station remains. */
+    assert(rc_demo_manager_wifi_peer() == RC_OK);
+    rc_demo_manager_wifi_lost();
+
+    /* Once a BLE owner fails, a Wi-Fi attempt may acquire the free slot. */
+    rc_demo_manager_init(false);
+    assert(rc_demo_manager_ble_peer() == RC_OK);
+    assert(rc_demo_manager_link_failure(RC_DEMO_LINK_BLE, RC_ERR_AUTH_FAILED));
+    assert(rc_demo_manager_wifi_peer() == RC_OK);
+    rc_demo_manager_wifi_lost();
+
+    puts("PASS: connection state, lifecycle, timeout, isolation tests");
     return 0;
 }

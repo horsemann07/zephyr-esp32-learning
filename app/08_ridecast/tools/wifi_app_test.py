@@ -1,5 +1,6 @@
-"""Minimal RideCast-08 Wi-Fi client (dev LAN only, NOT TLS).
-Usage: python wifi_app_test.py <ESP32-IP>
+"""Minimal RideCast-08 AP client (development only, NOT TLS).
+First join the RideCast-08 Wi-Fi network.
+Usage: python wifi_app_test.py [192.168.4.1]
 Default stores the raw Wi-Fi demo token next to this script (excluded in Git).
 """
 import argparse
@@ -23,7 +24,8 @@ def readline(sock):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("ip", help="ESP32 IPv4 address on your trusted LAN")
+    parser.add_argument("ip", nargs="?", default="192.168.4.1",
+                        help="RideCast AP IPv4 (default 192.168.4.1)")
     parser.add_argument("--port", type=int, default=5050)
     args = parser.parse_args()
     with socket.create_connection((args.ip, args.port), timeout=12) as sock:
@@ -58,7 +60,18 @@ def main():
             raise RuntimeError("Unexpected response: " + prompt)
         sock.sendall(b"PING\n")
         print("PING reply:", readline(sock))
-        input("Authenticated session active. Press ENTER to disconnect ...")
+        samples = [
+            ("RIGHT", 250, 35, 1),
+            ("STRAIGHT", 160, 30, 1),
+            ("LEFT", 80, 24, 1),
+            ("ARRIVED", 0, 0, 1),
+        ]
+        for direction, meters, kmh, gps in samples:
+            input(f"Send {direction} / {meters}m / {kmh}km/h? Press ENTER ...")
+            message = f"NAV {direction} {meters} {kmh} {gps}\n"
+            sock.sendall(message.encode("ascii"))
+            print("NAV reply:", readline(sock))
+        input("Leave session connected? Press ENTER to disconnect ...")
 
 
 if __name__ == "__main__":

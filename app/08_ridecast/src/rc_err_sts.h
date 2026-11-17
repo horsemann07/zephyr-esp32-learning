@@ -266,9 +266,50 @@ extern "C" {
     X(RC_ERR_INTERRUPT_CONFIG_FAILED         , -217) \
     X(RC_ERR_MEMORY_TEST_FAILED              , -218)
 
-/* Unrecoverable internal error (-255). */
+    
+/* Display, graphics and rendering errors (-219 to -254). */
+#define RC_ERR_STS_DISPLAY_LIST(X) \
+    X(RC_ERR_DISPLAY_NOT_READY                , -219) \
+    X(RC_ERR_DISPLAY_INIT_FAILED              , -220) \
+    X(RC_ERR_DISPLAY_NOT_FOUND                , -221) \
+    X(RC_ERR_DISPLAY_DEINIT_FAILED            , -222) \
+    X(RC_ERR_DISPLAY_UNSUPPORTED_PIXEL_FORMAT , -223) \
+    X(RC_ERR_DISPLAY_UNSUPPORTED_OPERATION    , -224) \
+    X(RC_ERR_DISPLAY_INVALID_RESOLUTION       , -225) \
+    X(RC_ERR_DISPLAY_INVALID_COORDINATES      , -226) \
+    X(RC_ERR_DISPLAY_OUT_OF_BOUNDS            , -227) \
+    X(RC_ERR_DISPLAY_INVALID_BUFFER           , -228) \
+    X(RC_ERR_DISPLAY_BUFFER_TOO_SMALL         , -229) \
+    X(RC_ERR_DISPLAY_FRAMEBUFFER_ALLOC_FAILED , -230) \
+    X(RC_ERR_DISPLAY_FRAMEBUFFER_INIT_FAILED  , -231) \
+    X(RC_ERR_DISPLAY_FRAMEBUFFER_CLEAR_FAILED , -232) \
+    X(RC_ERR_DISPLAY_FRAMEBUFFER_FINALIZE_FAILED, -233) \
+    X(RC_ERR_DISPLAY_WRITE_FAILED             , -234) \
+    X(RC_ERR_DISPLAY_READ_FAILED              , -235) \
+    X(RC_ERR_DISPLAY_BLANKING_FAILED          , -236) \
+    X(RC_ERR_DISPLAY_BRIGHTNESS_FAILED        , -237) \
+    X(RC_ERR_DISPLAY_CONTRAST_FAILED          , -238) \
+    X(RC_ERR_DISPLAY_ORIENTATION_FAILED       , -239) \
+    X(RC_ERR_DISPLAY_INVALID_FONT             , -240) \
+    X(RC_ERR_DISPLAY_FONT_NOT_FOUND           , -241) \
+    X(RC_ERR_DISPLAY_FONT_SELECT_FAILED       , -242) \
+    X(RC_ERR_DISPLAY_INVALID_GLYPH            , -243) \
+    X(RC_ERR_DISPLAY_TEXT_OVERFLOW            , -244) \
+    X(RC_ERR_DISPLAY_TEXT_RENDER_FAILED       , -245) \
+    X(RC_ERR_DISPLAY_DRAW_FAILED              , -246) \
+    X(RC_ERR_DISPLAY_RENDER_FAILED            , -247) \
+    X(RC_ERR_DISPLAY_BUSY                     , -248) \
+    X(RC_ERR_DISPLAY_TIMEOUT                  , -249) \
+    X(RC_ERR_DISPLAY_I2C_FAILED               , -250) \
+    X(RC_ERR_DISPLAY_MEMORY_EXHAUSTED         , -251) \
+    X(RC_ERR_DISPLAY_PIXEL_ALIGNMENT_FAILED   , -252) \
+    X(RC_ERR_DISPLAY_INVALID_COLOR_FORMAT     , -253) \
+    X(RC_ERR_DISPLAY_UNEXPECTED_RETURN        , -254)
+
+    
+/* Unrecoverable internal error: minimum signed int16_t value. */
 #define RC_ERR_STS_FATAL_LIST(X) \
-    X(RC_ERR_FATAL                           , -255)
+    X(RC_ERR_FATAL                            , -32768)
 
 /**
  * @brief Master X-macro status list. Use X(name, numeric_value).
@@ -287,6 +328,7 @@ extern "C" {
     RC_ERR_STS_SECURITY_LIST(X) \
     RC_ERR_STS_RIDECAST_LIST(X) \
     RC_ERR_STS_SYSTEM_LIST(X) \
+    RC_ERR_STS_DISPLAY_LIST(X) \
     RC_ERR_STS_FATAL_LIST(X)
 
 #define RC_ERR_STS_ENUM_ENTRY(name, value) name = value,
@@ -308,7 +350,18 @@ enum { RC_ERR_STS_COUNT = 0 RC_ERR_STS_LIST(RC_ERR_STS_COUNT_ONE) };
  * @returns "RC_ERR_UNRECOGNIZED" for unknown numeric values.
  * @note Does not allocate memory; returned static string is not to be freed.
  */
-const char *rc_err_sts_to_str(rc_err_sts_t status);
+static inline const char *rc_err_sts_to_str(rc_err_sts_t status)
+{
+    switch (status)
+    {
+#define RC_ERR_STS_TO_STRING(name, value) case name: return #name;
+    RC_ERR_STS_LIST(RC_ERR_STS_TO_STRING)
+#undef RC_ERR_STS_TO_STRING
+
+        default:
+            return "RC_ERR_UNRECOGNIZED";
+    }
+}
 
 #ifdef __cplusplus
 }

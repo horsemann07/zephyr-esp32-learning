@@ -1,21 +1,52 @@
-mainmenu "RideCast 08: Dual Radio Connection Demo"
+
+mainmenu "RideCast 08: Wi-Fi + BLE"
+
+# =========================================================
+# Wi-Fi
+# =========================================================
 
 config RC_ENABLE_WIFI
-    bool "Enable Wi-Fi STA and TCP enrollment"
+    bool "Enable Wi-Fi AP and TCP"
     depends on WIFI && NETWORKING && NET_SOCKETS
     default y
+    help
+      Enable RideCast Wi-Fi SoftAP and TCP
+      navigation communication.
+
+# =========================================================
+# Bluetooth
+# =========================================================
 
 config RC_ENABLE_BLE
-    bool "Enable BLE authenticated pairing and GATT"
+    bool "Enable BLE pairing and GATT"
     depends on BT && BT_PERIPHERAL && BT_SMP
     default y
+    help
+      Enable BLE notification and media
+      metadata communication.
 
-config RC_WIFI_SSID
-    string "Development WPA2 Wi-Fi network SSID"
-    default ""
+# =========================================================
+# Wi-Fi AP settings
+# =========================================================
 
-config RC_WIFI_PSK
-    string "Development WPA2 Wi-Fi passphrase"
-    default ""
+config RC_WIFI_AP_SSID
+    string "RideCast AP SSID"
+    default "RideCast-08"
+
+config RC_WIFI_AP_PSK
+    string "RideCast development AP password"
+    default "RideCast088"
+    help
+      Development password only.
+      Replace for production.
+
+config RC_WIFI_AP_CHANNEL
+    int "RideCast AP channel"
+    range 1 11
+    default 6
+
+# =========================================================
+# Zephyr
+# =========================================================
 
 source "Kconfig.zephyr"

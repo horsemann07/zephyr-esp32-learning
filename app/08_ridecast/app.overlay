@@ -1,13 +1,18 @@
-/* Heltec V2: same OLED configuration as the previously tested local samples.
- * Defer display startup until after the I2C bus recovery in heltec_graphic.c.
+
+/*
+ * RideCast - Heltec WiFi LoRa 32 V2
+ * SSD1306 128x64 OLED
  */
+
 #include <zephyr/dt-bindings/i2c/i2c.h>
 
+/* I2C bus */
 &i2c0 {
     status = "okay";
     clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 
+/* SSD1306 OLED */
 &ssd1306_ssd1306_128x64 {
     status = "okay";
     zephyr,deferred-init;
